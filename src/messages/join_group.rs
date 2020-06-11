@@ -1,11 +1,9 @@
 use linked_hash_map::LinkedHashMap;
-use serde::Serialize;
 
 use crate::{Bytes, GroupId, Request};
 
 type ProtocolName = String;
 
-#[derive(Serialize)]
 pub struct JoinGroupRequest /* p.name */ {
     pub group_id: GroupId,       // f.name: f.entityType
     pub session_timeout_ms: i32, // f.name: f.type
@@ -24,7 +22,6 @@ pub struct JoinGroupRequest /* p.name */ {
     pub protocols: LinkedHashMap<ProtocolName, JoinGroupRequestProtocol>,
 }
 
-#[derive(Serialize)]
 pub struct JoinGroupRequestProtocol {
     pub name: ProtocolName,
     pub metadata: Bytes,

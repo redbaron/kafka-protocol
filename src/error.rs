@@ -1,5 +1,3 @@
-use serde;
-use std::fmt;
 use std::io;
 use thiserror::Error;
 
@@ -13,22 +11,4 @@ pub enum Error {
 
     #[error("Conversion")]
     IntError(#[from] std::num::TryFromIntError),
-
-    #[error("Primitive '{0}' is not supported")]
-    Unsupported(&'static str),
-
-    #[error("serde")]
-    Custom(String),
-}
-
-impl serde::de::Error for Error {
-    fn custom<T: fmt::Display>(desc: T) -> Error {
-        Error::Custom(desc.to_string()).into()
-    }
-}
-
-impl serde::ser::Error for Error {
-    fn custom<T: fmt::Display>(msg: T) -> Self {
-        Error::Custom(msg.to_string()).into()
-    }
 }

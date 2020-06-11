@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "*", features = ["derive"] }
-linked-hash-map = { version = "*", features = ["serde_impl"] }
+linked-hash-map = { version = "*" }
 #byteorder = "*"
 thiserror = "*"
 uuid = "*"
