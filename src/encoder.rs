@@ -1,4 +1,17 @@
+use std::iter::ExactSizeIterator;
 use uuid;
+
+pub trait KafkaProtoEncodable {
+    fn emit<S: KafkaProtoEncoder>(&self, s: &mut S) -> std::result::Result<S::Ok, S::Error>;
+}
+
+pub trait KafkaProtoMessage {
+    fn serialize<S: KafkaProtoEncoder>(
+        &self,
+        version: i16,
+        s: &mut S,
+    ) -> std::result::Result<S::Ok, S::Error>;
+}
 
 // Kafka protocol primitive types
 // Ref: https://kafka.apache.org/protocol#protocol_types
@@ -26,8 +39,17 @@ pub trait KafkaProtoEncoder {
     fn emit_nullable_bytes(&mut self, v: Option<&[u8]>) -> Result<Self::Ok, Self::Error>;
     fn emit_compact_nullable_bytes(&mut self, v: Option<&[u8]>) -> Result<Self::Ok, Self::Error>;
     //fn emit_records(&mut self, v: &[Records]) -> Result<Self::Ok, Self::Error>;
-    fn emit_array<T>(&mut self, v: Option<&[T]>) -> Result<Self::Ok, Self::Error>
-        where T: super::KafkaProtoEncodable;
-    fn emit_compact_array<T>(&mut self, v: Option<&[T]>) -> Result<Self::Ok, Self::Error>
-        where T: super::KafkaProtoEncodable;
+    fn emit_array<'a, T: 'a>(
+        &mut self,
+        v: impl ExactSizeIterator<Item = &'a T>,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: KafkaProtoEncodable;
+
+    fn emit_compact_array<'a, T: 'a>(
+        &mut self,
+        v: impl ExactSizeIterator<Item = &'a T>,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: KafkaProtoEncodable;
 }

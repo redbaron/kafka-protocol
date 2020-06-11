@@ -1,6 +1,9 @@
+pub mod encoder;
 pub mod error;
 pub mod messages;
 pub mod ser;
+
+use encoder::*;
 
 // TODO: what  is entityType? It looks like newtype to me
 // See: EntityType.java, FieldSpec.java
@@ -22,7 +25,7 @@ pub type BrokerId = i32;
 type Bytes = Vec<u8>;
 
 trait Request {
-    const API_KEY: u16;
+    const API_KEY: i16;
 
     const MIN_API_VERSION: i16;
     const MAX_API_VERSION: i16;

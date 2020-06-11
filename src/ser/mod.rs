@@ -4,15 +4,7 @@ use crate::error::{Error, Result};
 
 use std::convert::TryInto;
 
-mod proto;
 mod varint;
-
-pub trait KafkaProtoEncodable {
-    fn emit<S: proto::KafkaProtoEncoder>(
-        &self,
-        s: &mut S,
-    ) -> std::result::Result<S::Ok, S::Error>;
-}
 
 pub struct KafkaSerializer<W> {
     writer: W,
@@ -32,7 +24,7 @@ impl<W: Write> KafkaSerializer<W> {
     }
 }
 
-impl<W: Write> proto::KafkaProtoEncoder for KafkaSerializer<W> {
+impl<W: Write> super::KafkaProtoEncoder for KafkaSerializer<W> {
     type Ok = ();
     type Error = Error;
 
@@ -148,34 +140,36 @@ impl<W: Write> proto::KafkaProtoEncoder for KafkaSerializer<W> {
         }
     }
 
-    fn emit_array<T>(&mut self, v: Option<&[T]>) -> Result<()>
+    fn emit_array<'a, T: 'a>(&mut self, v: impl ExactSizeIterator<Item = &'a T>) -> Result<()>
     where
-        T: KafkaProtoEncodable,
+        T: super::KafkaProtoEncodable,
     {
-        match v {
-            Some(s) => {
-                self.emit_int32(s.len().try_into()?)?;
-                for x in s {
-                    x.emit(self)?
-                }
-                Ok(())
+        if v.len() > 0 {
+            self.emit_int32(v.len().try_into()?)?;
+            for x in v {
+                x.emit(self)?;
             }
-            None => self.emit_int32(-1),
+            Ok(())
+        } else {
+            self.emit_int32(-1)
         }
     }
-    fn emit_compact_array<T>(&mut self, v: Option<&[T]>) -> Result<()> 
+
+    fn emit_compact_array<'a, T: 'a>(
+        &mut self,
+        v: impl ExactSizeIterator<Item = &'a T>,
+    ) -> Result<()>
     where
-        T: KafkaProtoEncodable,
+        T: super::KafkaProtoEncodable,
     {
-        match v {
-            Some(s) => {
-                self.emit_varuint(s.len().try_into()?)?;
-                for x in s {
-                    x.emit(self)?
-                }
-                Ok(())
+        if v.len() > 0 {
+            self.emit_varuint(v.len().try_into()?)?;
+            for x in v {
+                x.emit(self)?;
             }
-            None => self.emit_varuint(0),
+            Ok(())
+        } else {
+            self.emit_varuint(0)
         }
     }
 }
