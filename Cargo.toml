@@ -11,3 +11,4 @@ serde = { version = "*", features = ["derive"] }
 linked-hash-map = { version = "*", features = ["serde_impl"] }
 #byteorder = "*"
 thiserror = "*"
+uuid = "*"

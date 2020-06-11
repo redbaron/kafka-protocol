@@ -11,6 +11,9 @@ pub enum Error {
     #[error("IO")]
     Io(#[from] io::Error),
 
+    #[error("Conversion")]
+    IntError(#[from] std::num::TryFromIntError),
+
     #[error("Primitive '{0}' is not supported")]
     Unsupported(&'static str),
 
