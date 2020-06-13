@@ -9,6 +9,6 @@ pub enum Error {
     #[error("IO")]
     Io(#[from] io::Error),
 
-    #[error("Conversion")]
-    IntError(#[from] std::num::TryFromIntError),
+    #[error("Bounds check")]
+    BoundsCheck(#[from] std::num::TryFromIntError),
 }

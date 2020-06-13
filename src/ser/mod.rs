@@ -1,9 +1,10 @@
+use std::convert::TryInto;
 use std::io::Write;
 
 use crate::error::{Error, Result};
+pub use encoder::*;
 
-use std::convert::TryInto;
-
+mod encoder;
 mod varint;
 
 pub struct KafkaSerializer<W> {
@@ -28,7 +29,7 @@ impl<W: Write> KafkaSerializer<W> {
     }
 }
 
-impl<W: Write> super::KafkaProtoEncoder for KafkaSerializer<W> {
+impl<W: Write> KafkaProtoEncoder for KafkaSerializer<W> {
     type Ok = ();
     type Error = Error;
 
@@ -175,8 +176,7 @@ impl<W: Write> KafkaFlexiSerializer<W> {
     }
 }
 
-use crate::encoder::KafkaProtoEncoder;
-impl<W: Write> crate::KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
+impl<W: Write> KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
     type Ok = ();
     type Error = Error;
 
@@ -252,7 +252,7 @@ impl<W: Write> crate::KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
     //fn emit_records(&mut self, v: &[Records]) -> Result<()>;
     fn emit_array<'a, T: 'a>(&mut self, v: impl ExactSizeIterator<Item = &'a T>) -> Result<()>
     where
-        T: super::KafkaProtoEncodable,
+        T: KafkaProtoEncodable,
     {
         if self.use_flexible {
             self.serializer.emit_compact_array_hdr(v.len())?;
@@ -261,8 +261,41 @@ impl<W: Write> crate::KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
         };
 
         for e in v {
-            e.emit(self)?;
+            e.serialize(0, self)?;
         }
         Ok(())
     }
+}
+
+use crate::messages::RequestHeader;
+use crate::ser;
+use crate::Request;
+
+pub fn serialize_message<M, W>(
+    m: &M,
+    ver: i16,
+    client_id: &str,
+    w: &mut W,
+) -> crate::error::Result<()>
+where
+    M: KafkaProtoEncodable + Request,
+    W: Write,
+{
+    let hdr = RequestHeader {
+        request_api_key: M::API_KEY,
+        request_api_version: ver,
+        correlation_id: 0,
+        client_id: client_id,
+    };
+
+    let is_flexible = ver >= M::FLEXIBLE_VERSION;
+
+    // Ref: https://github.com/apache/kafka/blob/2.5.0/generator/src/main/java/org/apache/kafka/message/ApiMessageTypeGenerator.java#L252-L318
+    // header version doesn't seem to affect bytes on a wire, but leaving it is here for completeness
+    let hdr_ver = if is_flexible { 2i16 } else { 1i16 };
+
+    let mut s = ser::KafkaFlexiSerializer::new(is_flexible, w);
+
+    hdr.serialize(hdr_ver, &mut s.serializer)?;
+    m.serialize(ver, &mut s)
 }

@@ -1,9 +1,6 @@
-pub mod encoder;
 pub mod error;
 pub mod messages;
 pub mod ser;
-
-use encoder::*;
 
 // TODO: what  is entityType? It looks like newtype to me
 // See: EntityType.java, FieldSpec.java
@@ -30,15 +27,6 @@ pub trait Request {
     const MIN_API_VERSION: i16;
     const MAX_API_VERSION: i16;
     const FLEXIBLE_VERSION: i16;
-    //const DEFAULT_API_VERSION: i16;
 
     type Response;
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }
