@@ -1,16 +1,21 @@
+use std::io;
 use std::iter::ExactSizeIterator;
 use uuid;
 
-pub trait KafkaProtoEncodable {
-    fn emit<S: KafkaFlexibleEncoder>(&self, s: &mut S) -> Result<S::Ok, S::Error>;
-}
-
+// Kafka protocol message
+// Messages always start with header containing API_KEY and message version,
+// followed by serialized message content.
+// `serialize` method should not be serializing header, only message content.
 pub trait KafkaProtoMessage {
     fn serialize<S: KafkaFlexibleEncoder>(
         &self,
         version: i16,
         s: &mut S,
     ) -> Result<S::Ok, S::Error>;
+}
+
+pub trait KafkaProtoEncodable {
+    fn emit<S: KafkaFlexibleEncoder>(&self, s: &mut S) -> Result<S::Ok, S::Error>;
 }
 
 // Low level Kafka protocol primitive types
@@ -71,4 +76,36 @@ pub trait KafkaFlexibleEncoder {
     ) -> Result<Self::Ok, Self::Error>
     where
         T: KafkaProtoEncodable;
+}
+
+use crate::messages::RequestHeader;
+use crate::ser;
+use crate::Request;
+
+pub fn serialize_message<M, W>(
+    m: &M,
+    ver: i16,
+    client_id: &str,
+    w: &mut W,
+) -> crate::error::Result<()>
+where
+    M: KafkaProtoMessage + Request,
+    W: io::Write,
+{
+    let hdr = RequestHeader {
+        request_api_key: M::API_KEY,
+        request_api_version: ver,
+        correlation_id: 0,
+        client_id: client_id,
+    };
+
+    let is_flexible = ver >= M::FLEXIBLE_VERSION;
+
+    // Ref: https://github.com/apache/kafka/blob/2.5.0/generator/src/main/java/org/apache/kafka/message/ApiMessageTypeGenerator.java#L252-L318
+    let hdr_ver = if is_flexible { 2i16 } else { 1i16 };
+
+    let mut s = ser::KafkaFlexiSerializer::new(is_flexible, w);
+
+    hdr.serialize(hdr_ver, &mut s.serializer)?;
+    m.serialize(ver, &mut s)
 }

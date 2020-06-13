@@ -24,7 +24,7 @@ pub type BrokerId = i32;
 
 type Bytes = Vec<u8>;
 
-trait Request {
+pub trait Request {
     const API_KEY: i16;
 
     const MIN_API_VERSION: i16;
