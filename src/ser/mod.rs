@@ -6,11 +6,15 @@ use std::convert::TryInto;
 
 mod varint;
 
-pub struct KafkaSerializer<W> {
+struct KafkaSerializer<W> {
     writer: W,
 }
 
 impl<W: Write> KafkaSerializer<W> {
+    fn new(writer: W) -> KafkaSerializer<W> {
+        KafkaSerializer { writer }
+    }
+
     fn emit_varuint(&mut self, v: u32) -> Result<()> {
         let mut buf = [0u8; 5];
         let count = varint::encode_varint32(v, &mut buf);
@@ -140,36 +144,125 @@ impl<W: Write> super::KafkaProtoEncoder for KafkaSerializer<W> {
         }
     }
 
-    fn emit_array<'a, T: 'a>(&mut self, v: impl ExactSizeIterator<Item = &'a T>) -> Result<()>
-    where
-        T: super::KafkaProtoEncodable,
-    {
-        if v.len() > 0 {
-            self.emit_int32(v.len().try_into()?)?;
-            for x in v {
-                x.emit(self)?;
-            }
-            Ok(())
+    fn emit_array_hdr(&mut self, len: usize) -> Result<()> {
+        if len > 0 {
+            self.emit_int32(len.try_into()?)
         } else {
             self.emit_int32(-1)
         }
     }
 
-    fn emit_compact_array<'a, T: 'a>(
-        &mut self,
-        v: impl ExactSizeIterator<Item = &'a T>,
-    ) -> Result<()>
-    where
-        T: super::KafkaProtoEncodable,
-    {
-        if v.len() > 0 {
-            self.emit_varuint(v.len().try_into()?)?;
-            for x in v {
-                x.emit(self)?;
-            }
-            Ok(())
+    fn emit_compact_array_hdr(&mut self, len: usize) -> Result<()> {
+        if len > 0 {
+            self.emit_varuint(len.try_into()?)
         } else {
             self.emit_varuint(0)
         }
+    }
+}
+
+pub struct KafkaFlexiSerializer<T> {
+    use_flexi: bool,
+    s: KafkaSerializer<T>,
+}
+
+impl<W: Write> KafkaFlexiSerializer<W> {
+    pub fn new(version: i16, flexible_version: i16, writer: W) -> KafkaFlexiSerializer<W> {
+        KafkaFlexiSerializer {
+            use_flexi: version >= flexible_version,
+            s: KafkaSerializer::new(writer),
+        }
+    }
+}
+
+use crate::encoder::KafkaProtoEncoder;
+impl<W: Write> crate::KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
+    type Ok = ();
+    type Error = Error;
+
+    fn emit_bool(&mut self, v: bool) -> Result<()> {
+        self.s.emit_bool(v)
+    }
+    fn emit_int8(&mut self, v: i8) -> Result<()> {
+        self.s.emit_int8(v)
+    }
+    fn emit_int16(&mut self, v: i16) -> Result<()> {
+        self.s.emit_int16(v)
+    }
+
+    fn emit_int32(&mut self, v: i32) -> Result<()> {
+        self.s.emit_int32(v)
+    }
+
+    fn emit_int64(&mut self, v: i64) -> Result<()> {
+        self.s.emit_int64(v)
+    }
+
+    fn emit_uint32(&mut self, v: u32) -> Result<()> {
+        self.s.emit_uint32(v)
+    }
+
+    fn emit_varint(&mut self, v: i32) -> Result<()> {
+        self.s.emit_varint(v)
+    }
+
+    fn emit_varlong(&mut self, v: i64) -> Result<()> {
+        self.s.emit_varlong(v)
+    }
+
+    fn emit_uuid(&mut self, v: uuid::Uuid) -> Result<()> {
+        self.s.emit_uuid(v)
+    }
+
+    fn emit_float64(&mut self, v: f64) -> Result<()> {
+        self.s.emit_float64(v)
+    }
+
+    fn emit_string(&mut self, v: &str) -> Result<()> {
+        if self.use_flexi {
+            self.s.emit_compact_string(v)
+        } else {
+            self.s.emit_string(v)
+        }
+    }
+
+    fn emit_nullable_string(&mut self, v: Option<&str>) -> Result<()> {
+        if self.use_flexi {
+            self.s.emit_compact_nullable_string(v)
+        } else {
+            self.s.emit_nullable_string(v)
+        }
+    }
+
+    fn emit_bytes(&mut self, v: &[u8]) -> Result<()> {
+        if self.use_flexi {
+            self.s.emit_compact_bytes(v)
+        } else {
+            self.s.emit_bytes(v)
+        }
+    }
+
+    fn emit_nullable_bytes(&mut self, v: Option<&[u8]>) -> Result<()> {
+        if self.use_flexi {
+            self.s.emit_compact_nullable_bytes(v)
+        } else {
+            self.s.emit_nullable_bytes(v)
+        }
+    }
+    //fn emit_records(&mut self, v: &[Records]) -> Result<()>;
+    fn emit_array<'a, T: 'a>(&mut self, v: impl ExactSizeIterator<Item = &'a T>) -> Result<()>
+    where
+        T: super::KafkaProtoEncodable,
+    {
+        if self.use_flexi {
+            self.s.emit_compact_array_hdr(v.len())?;
+        } else {
+            self.s.emit_array_hdr(v.len())?;
+        };
+
+        for e in v {
+            e.emit(self)?;
+        }
+        Ok(())
     }
 }

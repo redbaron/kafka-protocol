@@ -1,3 +1,4 @@
+use crate::encoder::KafkaFlexibleEncoder;
 use linked_hash_map::LinkedHashMap;
 
 use crate::{Bytes, GroupId, Request};
@@ -23,11 +24,11 @@ pub struct JoinGroupRequest /* p.name */ {
 }
 
 impl crate::KafkaProtoMessage for JoinGroupRequest {
-    fn serialize<S: crate::KafkaProtoEncoder>(
+    fn serialize<S: crate::KafkaFlexibleEncoder>(
         &self,
         ver: i16,
         s: &mut S,
-    ) -> std::result::Result<S::Ok, S::Error> {
+    ) -> Result<S::Ok, S::Error> {
         s.emit_string(&self.group_id)?;
         s.emit_int32(self.session_timeout_ms)?;
 
@@ -53,7 +54,7 @@ pub struct JoinGroupRequestProtocol {
 }
 
 impl crate::KafkaProtoEncodable for JoinGroupRequestProtocol {
-    fn emit<S: crate::KafkaProtoEncoder>(&self, s: &mut S) -> std::result::Result<S::Ok, S::Error> {
+    fn emit<S: KafkaFlexibleEncoder>(&self, s: &mut S) -> Result<S::Ok, S::Error> {
         s.emit_string(&self.name)?;
         s.emit_bytes(&self.metadata)
     }
