@@ -1,3 +1,4 @@
+use crate::de::{KafkaFlexibleDecoder, KafkaProtoDecodable};
 use crate::ser::{KafkaFlexibleEncoder, KafkaProtoEncodable};
 use linked_hash_map::LinkedHashMap;
 
@@ -44,6 +45,32 @@ impl KafkaProtoEncodable for JoinGroupRequest {
     }
 }
 
+impl KafkaProtoDecodable for JoinGroupRequest {
+    fn deserialize<'a, D: KafkaFlexibleDecoder<'a>>(ver: i16, d: &mut D) -> Result<Self, D::Error> {
+        Ok(JoinGroupRequest {
+            group_id: d.read_string()?.to_string(),
+            session_timeout_ms: d.read_int32()?,
+            rebalance_timeout_ms: if ver >= 1 { d.read_int32()? } else { -1 },
+            member_id: d.read_string()?.to_string(),
+            group_instance_id: if ver >= 5 {
+                d.read_nullable_string()?.map(Into::into)
+            } else {
+                None
+            },
+            protocol_type: d.read_string()?.to_string(),
+            protocols: {
+                let len = d.read_array_hdr()?;
+                let mut protocols = LinkedHashMap::with_capacity(len);
+                for _ in 0..len {
+                    let p = JoinGroupRequestProtocol::deserialize(0, d)?;
+                    protocols.insert(p.name.clone(), p);
+                }
+                protocols
+            },
+        })
+    }
+}
+
 pub struct JoinGroupRequestProtocol {
     pub name: ProtocolName,
     pub metadata: Bytes,
@@ -53,6 +80,18 @@ impl KafkaProtoEncodable for JoinGroupRequestProtocol {
     fn serialize<S: KafkaFlexibleEncoder>(&self, _v: i16, s: &mut S) -> Result<S::Ok, S::Error> {
         s.emit_string(&self.name)?;
         s.emit_bytes(&self.metadata)
+    }
+}
+
+impl KafkaProtoDecodable for JoinGroupRequestProtocol {
+    fn deserialize<'a, D: KafkaFlexibleDecoder<'a>>(
+        _ver: i16,
+        d: &mut D,
+    ) -> Result<Self, D::Error> {
+        Ok(JoinGroupRequestProtocol {
+            name: d.read_string()?.to_string(),
+            metadata: d.read_bytes()?.to_vec(),
+        })
     }
 }
 
