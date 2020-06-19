@@ -1,7 +1,7 @@
 // SOURCE: https://github.com/stepancheg/rust-protobuf/blob/68c7a5a5d42912120d0af56d4bf5e946bad1da34/protobuf/src/varint.rs
 
 #[inline]
-pub fn encode_varint64(mut value: u64, buf: &mut [u8]) -> usize {
+pub(crate) fn encode_varint64(mut value: u64, buf: &mut [u8]) -> usize {
     assert!(buf.len() >= 10);
 
     fn iter(value: &mut u64, byte: &mut u8) -> bool {

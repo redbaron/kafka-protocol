@@ -91,7 +91,7 @@ impl<W: Write> KafkaProtoEncoder for KafkaSerializer<W> {
 
     // KF: COMPACT_STRING
     fn emit_compact_string(&mut self, v: &str) -> Result<()> {
-        self.emit_varuint(v.len() as u32)?;
+        self.emit_varuint(v.len().try_into()?)?;
         self.writer.write_all(v.as_bytes()).map_err(Into::into)
     }
 

@@ -11,4 +11,14 @@ pub enum Error {
 
     #[error("Bounds check")]
     BoundsCheck(#[from] std::num::TryFromIntError),
+
+    // Deserialization errors below
+    #[error("Message length")]
+    OutOfBounds,
+
+    #[error("Incorrect varint")]
+    IncorrectVarint,
+
+    #[error("UTF8 decoding error")]
+    UTF8Error(#[from] std::str::Utf8Error),
 }
