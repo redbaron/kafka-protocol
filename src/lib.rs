@@ -22,12 +22,14 @@ pub type BrokerId = i32;
 
 type Bytes = Vec<u8>;
 
-pub trait Request {
+pub trait KafkaMessage {
     const API_KEY: i16;
 
     const MIN_API_VERSION: i16;
     const MAX_API_VERSION: i16;
     const FLEXIBLE_VERSION: i16;
+}
 
+pub trait KafkaRequest {
     type Response;
 }

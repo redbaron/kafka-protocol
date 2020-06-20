@@ -2,7 +2,7 @@ use crate::de::{KafkaFlexibleDecoder, KafkaProtoDecodable};
 use crate::ser::{KafkaFlexibleEncoder, KafkaProtoEncodable};
 use linked_hash_map::LinkedHashMap;
 
-use crate::{Bytes, GroupId, Request};
+use crate::{Bytes, GroupId, KafkaMessage, KafkaRequest};
 
 type ProtocolName = String;
 
@@ -95,13 +95,15 @@ impl KafkaProtoDecodable for JoinGroupRequestProtocol {
     }
 }
 
-impl Request for JoinGroupRequest {
+impl KafkaMessage for JoinGroupRequest {
     const API_KEY: i16 = 11; // j.apiKey
 
     const MIN_API_VERSION: i16 = 0; // j.validVersions.split("-")[0]
     const MAX_API_VERSION: i16 = 7; // j.validVersions.split("-")[1]
     const FLEXIBLE_VERSION: i16 = 6; // j.flexibleVersions[0]
+}
 
-    //type Response = JoinGroupResponse;
+impl KafkaRequest for JoinGroupRequest {
     type Response = ();
+    //type Response = JoinGroupResponse;
 }

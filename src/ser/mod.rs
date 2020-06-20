@@ -269,7 +269,7 @@ impl<W: Write> KafkaFlexibleEncoder for KafkaFlexiSerializer<W> {
 
 use crate::messages::RequestHeader;
 use crate::ser;
-use crate::Request;
+use crate::KafkaMessage;
 
 pub fn serialize_message<M, W>(
     m: &M,
@@ -278,7 +278,7 @@ pub fn serialize_message<M, W>(
     w: &mut W,
 ) -> crate::error::Result<()>
 where
-    M: KafkaProtoEncodable + Request,
+    M: KafkaProtoEncodable + KafkaMessage,
     W: Write,
 {
     let hdr = RequestHeader {
